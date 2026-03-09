@@ -14,12 +14,13 @@
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     .custom-scrollbar::-webkit-scrollbar { width: 5px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; }
+    .alert-glow { box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
   </style>
 </head>
 <body class="h-screen overflow-hidden flex text-slate-800">
 
   <!-- Sidebar -->
-  <aside id="sidebar" class="w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col shadow-xl">
+  <aside class="w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col shadow-xl">
     <div class="p-6 flex flex-col gap-1 border-b border-slate-800">
       <div class="flex items-center gap-3">
         <div class="bg-blue-600 p-2 rounded-lg"><i data-lucide="box" class="w-5 h-5 text-white"></i></div>
@@ -29,7 +30,7 @@
     </div>
 
     <nav class="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
-      <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:bg-slate-800" data-tab="dashboard">
+      <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:bg-slate-800 active-btn bg-slate-800 text-white" data-tab="dashboard">
         <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
         <span class="font-medium text-sm">Resumen</span>
       </button>
@@ -37,64 +38,100 @@
         <i data-lucide="plus-circle" class="w-5 h-5"></i>
         <span class="font-medium text-sm">Nuevo Producto</span>
       </button>
-      <button onclick="switchTab('carga-masiva')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:bg-slate-800" data-tab="carga-masiva">
-        <i data-lucide="layers" class="w-5 h-5"></i>
-        <span class="font-medium text-sm">Carga Masiva</span>
-      </button>
       <button onclick="switchTab('movimientos')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:bg-slate-800" data-tab="movimientos">
         <i data-lucide="repeat" class="w-5 h-5"></i>
-        <span class="font-medium text-sm">Entradas / Salidas</span>
+        <span class="font-medium text-sm">Movimientos</span>
       </button>
       <button onclick="switchTab('inventario')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:bg-slate-800" data-tab="inventario">
         <i data-lucide="list" class="w-5 h-5"></i>
-        <span class="font-medium text-sm">Lista de Stock</span>
+        <span class="font-medium text-sm">Stock Total</span>
       </button>
     </nav>
     <div class="p-4 border-t border-slate-800 text-[10px] text-slate-500 text-center">
-        ID de Usuario: <span id="display-user-id">Iniciando...</span>
+        USUARIO ID: <span id="display-user-id" class="font-mono">Cargando...</span>
     </div>
   </aside>
 
-  <!-- Main Content -->
+  <!-- Contenido Principal -->
   <main class="flex-1 flex flex-col overflow-hidden">
     <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 z-10">
-      <h2 id="pageTitle" class="text-xl font-bold text-slate-800">Resumen</h2>
-      <div id="sync-indicator" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest border border-slate-100 bg-slate-50 px-3 py-1 rounded-full flex items-center gap-2">
-        <div id="sync-dot" class="w-2 h-2 bg-slate-300 rounded-full"></div> <span id="sync-text">Conectando...</span>
+      <h2 id="pageTitle" class="text-xl font-bold text-slate-800 tracking-tight">Resumen</h2>
+      <div class="flex items-center gap-3">
+          <div id="sync-indicator" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest border border-slate-100 bg-slate-50 px-3 py-1 rounded-full flex items-center gap-2">
+            <div id="sync-dot" class="w-2 h-2 bg-slate-300 rounded-full"></div> <span id="sync-text">Verificando...</span>
+          </div>
       </div>
     </header>
 
     <section class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+      
+      <!-- CUADRO DE SOLUCIÓN DE PERMISOS (Se muestra si hay error 403) -->
+      <div id="permission-warning" class="hidden alert-glow bg-red-50 border-2 border-red-200 p-6 rounded-2xl mb-8">
+          <div class="flex items-start gap-4">
+              <div class="bg-red-500 p-3 rounded-xl shadow-lg animate-bounce"><i data-lucide="shield-alert" class="w-6 h-6 text-white"></i></div>
+              <div class="flex-1">
+                  <h3 class="text-red-900 font-bold text-lg uppercase tracking-tight">¡Error de Permisos de Firebase!</h3>
+                  <p class="text-red-700 text-sm mt-1">Tu base de datos está bloqueando el acceso. Sigue estos 3 pasos para arreglarlo:</p>
+                  
+                  <ol class="mt-4 space-y-3 text-sm text-red-800 list-decimal list-inside font-medium">
+                      <li>Ve a la <a href="https://console.firebase.google.com/" target="_blank" class="underline font-bold">Consola de Firebase</a>.</li>
+                      <li>Entra en <b>Firestore Database</b> > pestaña <b>Rules</b> (Reglas).</li>
+                      <li>Borra lo que haya y pega el siguiente código:</li>
+                  </ol>
+
+                  <div class="mt-4 bg-slate-900 rounded-xl p-5 relative">
+                      <pre class="text-green-400 font-mono text-xs leading-relaxed">
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+                  </div>
+                  <p class="text-red-800 text-xs mt-4 font-bold italic">
+                      ⚠️ Nota: Una vez pegado, dale clic al botón azul que dice "Publish" (Publicar). Luego recarga esta página.
+                  </p>
+              </div>
+          </div>
+      </div>
+
       <!-- Tab: Dashboard -->
       <div id="dashboard" class="tab-content active space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Total Productos</p>
-            <h3 class="text-3xl font-bold text-slate-900" id="stat-total-prod">0</h3>
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm border-t-4 border-t-blue-500">
+            <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">Items Registrados</p>
+            <h3 class="text-4xl font-extrabold text-slate-900" id="stat-total-prod">0</h3>
           </div>
-          <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-blue-500">
-            <p class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Operaciones</p>
-            <h3 class="text-3xl font-bold text-slate-900" id="stat-moves-total">0</h3>
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm border-t-4 border-t-emerald-500">
+            <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">Últimos Movimientos</p>
+            <h3 class="text-4xl font-extrabold text-slate-900" id="stat-moves-total">0</h3>
           </div>
-          <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Estado Sede</p>
-            <h3 class="text-lg font-bold text-green-600 mt-2" id="db-status">Esperando Auth</h3>
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm border-t-4 border-t-amber-500">
+            <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">Estado de Red</p>
+            <div id="db-status-pill" class="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold uppercase">
+                <div id="status-bulb" class="w-2 h-2 rounded-full bg-slate-400"></div>
+                <span id="db-status-text">Iniciando...</span>
+            </div>
           </div>
         </div>
 
-        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h4 class="font-bold text-slate-800 mb-4 text-sm uppercase">Movimientos Recientes</h4>
-          <div class="overflow-hidden rounded-lg border border-slate-100">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h4 class="font-bold text-slate-800 mb-4 text-xs uppercase tracking-widest flex items-center gap-2">
+              <i data-lucide="history" class="w-4 h-4"></i> Actividad Reciente
+          </h4>
+          <div class="overflow-hidden rounded-xl border border-slate-100">
             <table class="w-full text-sm text-left">
-              <thead class="bg-slate-50 text-slate-500 font-medium">
+              <thead class="bg-slate-50/50 text-slate-400 font-bold text-[9px] uppercase tracking-widest border-b border-slate-100">
                 <tr>
-                  <th class="px-6 py-3">Producto</th>
-                  <th class="px-6 py-3">Tipo</th>
-                  <th class="px-6 py-3 text-right">Cantidad</th>
+                  <th class="px-6 py-4">Producto</th>
+                  <th class="px-6 py-4">Operación</th>
+                  <th class="px-6 py-4 text-right">Cant.</th>
                 </tr>
               </thead>
               <tbody id="recent-moves-body" class="divide-y divide-slate-100">
-                <tr><td colspan="3" class="px-6 py-4 text-center text-slate-400">Cargando datos...</td></tr>
+                <tr><td colspan="3" class="px-6 py-10 text-center text-slate-400 italic text-xs">Cargando datos...</td></tr>
               </tbody>
             </table>
           </div>
@@ -103,86 +140,80 @@
 
       <!-- Tab: Productos -->
       <div id="productos" class="tab-content">
-        <div class="bg-white p-8 rounded-xl border border-slate-200 shadow-sm max-w-2xl">
-          <h4 class="font-bold text-slate-800 text-lg mb-6 tracking-tight">Registro Individual</h4>
-          <form id="form-producto" class="space-y-5">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 uppercase">Código (Opcional)</label>
-                <input type="text" name="sku" placeholder="Auto-generar" class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-blue-500 outline-none text-sm">
+        <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm max-w-2xl">
+          <h4 class="font-bold text-slate-900 text-xl mb-6 tracking-tight">Registrar Nuevo Producto</h4>
+          <form id="form-producto" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Código (SKU)</label>
+                <input type="text" name="sku" placeholder="Ej: LAP-001" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none transition-all text-sm font-medium uppercase">
               </div>
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 uppercase">Nombre del Producto</label>
-                <input type="text" name="nombre" required placeholder="Ej: Resmas de papel" class="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-blue-500 outline-none text-sm">
+              <div class="space-y-2">
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nombre Completo</label>
+                <input type="text" name="nombre" required placeholder="Ej: Resma de Papel Carta" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none transition-all text-sm font-medium">
               </div>
             </div>
-            <button type="submit" class="bg-slate-900 text-white font-bold py-3 px-6 rounded-lg text-sm flex items-center gap-2">
-              <i data-lucide="plus" class="w-4 h-4"></i> Guardar en Nube
+            <button type="submit" class="w-full md:w-auto bg-slate-900 text-white font-bold py-3.5 px-8 rounded-xl text-sm shadow-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-2">
+              <i data-lucide="plus" class="w-4 h-4"></i> Guardar Producto
             </button>
           </form>
         </div>
       </div>
 
-      <!-- Tab: Carga Masiva -->
-      <div id="carga-masiva" class="tab-content">
-        <div class="bg-white p-8 rounded-xl border border-slate-200 shadow-sm max-w-2xl">
-          <h4 class="font-bold text-slate-800 text-lg mb-2">Carga Masiva</h4>
-          <p class="text-xs text-slate-400 mb-4">Pega una lista de nombres de materiales.</p>
-          <textarea id="bulk-input" rows="8" placeholder="Material 1&#10;Material 2" class="w-full px-4 py-3 rounded-lg border border-slate-200 mb-4 text-sm"></textarea>
-          <button onclick="processBulkLoad()" class="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg text-sm flex items-center gap-2">
-            <i data-lucide="play" class="w-4 h-4"></i> Procesar y Sincronizar
-          </button>
-        </div>
-      </div>
-
       <!-- Tab: Movimientos -->
       <div id="movimientos" class="tab-content">
-        <div class="bg-white p-8 rounded-xl border border-slate-200 shadow-sm max-w-xl mx-auto">
-          <h4 class="font-bold text-slate-800 text-lg mb-6 tracking-tight">Registrar Operación</h4>
-          <form id="form-movimiento" class="space-y-5">
-            <div class="space-y-1 relative">
-              <label class="text-xs font-bold text-slate-500 uppercase">Buscar Producto</label>
-              <input type="text" id="mov-search-input" placeholder="Escribe para buscar..." autocomplete="off" class="w-full px-4 py-2.5 rounded-lg border border-slate-200 outline-none text-sm">
-              <div id="mov-search-results" class="absolute w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto hidden"></div>
+        <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm max-w-xl mx-auto">
+          <h4 class="font-bold text-slate-900 text-xl mb-6 tracking-tight text-center">Registrar Entrada / Salida</h4>
+          <form id="form-movimiento" class="space-y-6">
+            <div class="space-y-2 relative">
+              <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Seleccionar Producto</label>
+              <div class="relative">
+                <i data-lucide="search" class="absolute left-4 top-3.5 w-4 h-4 text-slate-400"></i>
+                <input type="text" id="mov-search-input" placeholder="Buscar por nombre o SKU..." autocomplete="off" class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 outline-none text-sm font-medium focus:border-blue-500">
+              </div>
+              <div id="mov-search-results" class="absolute w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl z-20 max-h-48 overflow-y-auto hidden"></div>
               <input type="hidden" name="producto_sku" id="mov-selected-sku" required>
             </div>
-            <div class="grid grid-cols-2 gap-5">
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 uppercase">Tipo</label>
-                <select name="tipo" class="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm bg-white">
-                  <option value="ENTRADA">Entrada (+)</option>
-                  <option value="SALIDA">Salida (-)</option>
+            <div class="grid grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Tipo</label>
+                <select name="tipo" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold bg-white outline-none cursor-pointer">
+                  <option value="ENTRADA">ENTRADA (+)</option>
+                  <option value="SALIDA">SALIDA (-)</option>
                 </select>
               </div>
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 uppercase">Cantidad</label>
-                <input type="number" name="cantidad" required min="1" class="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm">
+              <div class="space-y-2">
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cantidad</label>
+                <input type="number" name="cantidad" required min="1" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold outline-none focus:border-blue-500">
               </div>
             </div>
-            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg text-sm">Confirmar Operación</button>
+            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl text-sm shadow-lg hover:bg-blue-700 transition-all uppercase tracking-widest">Procesar Movimiento</button>
           </form>
         </div>
       </div>
 
       <!-- Tab: Inventario -->
       <div id="inventario" class="tab-content">
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <h4 class="font-bold text-slate-800 text-sm uppercase">Existencias Actuales</h4>
-            <input type="text" id="search-inventory" placeholder="Filtrar..." class="px-4 py-2 rounded-lg border border-slate-200 text-xs outline-none">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+            <h4 class="font-bold text-slate-900 text-sm uppercase tracking-widest">Existencias en Sede</h4>
+            <div class="relative w-64">
+                <i data-lucide="filter" class="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
+                <input type="text" id="search-inventory" placeholder="Filtrar por nombre..." class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-xs outline-none focus:border-blue-500">
+            </div>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-left">
-              <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-widest border-b border-slate-200">
+              <thead class="bg-slate-50/50 text-slate-400 text-[9px] uppercase font-extrabold tracking-widest border-b border-slate-100">
                 <tr>
-                  <th class="px-6 py-4">Código</th>
-                  <th class="px-6 py-4">Descripción</th>
-                  <th class="px-6 py-4 text-center">En Stock</th>
-                  <th class="px-6 py-4 text-right">Acciones</th>
+                  <th class="px-8 py-5">SKU</th>
+                  <th class="px-8 py-5">Producto</th>
+                  <th class="px-8 py-5 text-center">Stock Actual</th>
+                  <th class="px-8 py-5 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody id="inventory-table-body" class="divide-y divide-slate-100">
-                <tr><td colspan="4" class="px-6 py-10 text-center text-slate-400">Cargando inventario...</td></tr>
+              <tbody id="inventory-table-body" class="divide-y divide-slate-50">
+                <tr><td colspan="4" class="px-8 py-20 text-center text-slate-400 italic">Cargando base de datos...</td></tr>
               </tbody>
             </table>
           </div>
@@ -191,28 +222,31 @@
     </section>
   </main>
 
+  <!-- Notificaciones -->
   <div id="toast" class="fixed bottom-8 right-8 transform translate-y-32 opacity-0 transition-all duration-300 z-50">
-    <div class="bg-slate-900 text-white shadow-2xl rounded-lg py-3 px-6 flex items-center gap-3">
+    <div class="bg-slate-900 text-white shadow-2xl rounded-2xl py-4 px-6 flex items-center gap-3 border border-white/10">
       <div id="toast-icon"></div>
-      <p id="toast-msg" class="text-sm font-medium"></p>
+      <p id="toast-msg" class="text-xs font-bold tracking-tight"></p>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, updateDoc, deleteDoc, collection, onSnapshot, query, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, updateDoc, deleteDoc, collection, onSnapshot, getDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+    // --- CONFIGURACIÓN E INICIALIZACIÓN ---
     const firebaseConfig = JSON.parse(__firebase_config);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'scholas-santa-marta';
+    
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'scholas-santa-marta';
 
     let user = null;
     let state = { productos: [], movimientos: [] };
 
-    // --- Autenticación Obligatoria según Regla 3 ---
+    // --- AUTENTICACIÓN (REGLA 3) ---
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -221,155 +255,112 @@
           await signInAnonymously(auth);
         }
       } catch (error) {
-        console.error("Error crítico de autenticación:", error);
-        showToast("Error al conectar con la nube", "error");
+        console.error("Auth Error:", error);
+        updateStatus("Error de Acceso", "bg-red-500", "text-red-700");
       }
     };
 
     onAuthStateChanged(auth, (u) => {
       user = u;
       if (user) {
-        document.getElementById('display-user-id').innerText = user.uid.substring(0, 8) + "...";
-        document.getElementById('db-status').innerText = "Nube Activa";
-        startSync(); // Solo iniciar sincronización después de tener usuario
-      } else {
-        document.getElementById('db-status').innerText = "Sin Conexión";
+        document.getElementById('display-user-id').innerText = user.uid;
+        updateStatus("En línea", "bg-emerald-500", "text-emerald-700");
+        setupSubscriptions();
       }
     });
 
     initAuth();
 
-    // --- Sincronización en Tiempo Real con Rutas Estrictas (Regla 1) ---
-    function startSync() {
+    function updateStatus(text, bulbClass, textClass) {
+        const bulb = document.getElementById('status-bulb');
+        const status = document.getElementById('db-status-text');
+        bulb.className = `w-2 h-2 rounded-full ${bulbClass}`;
+        status.innerText = text;
+        const pill = document.getElementById('db-status-pill');
+        pill.className = `mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 ${textClass} text-[10px] font-bold uppercase`;
+    }
+
+    // --- SUSCRIPCIONES A DATOS (REGLA 1 y 2) ---
+    function setupSubscriptions() {
       if (!user) return;
-      
+
       const syncDot = document.getElementById('sync-dot');
       const syncText = document.getElementById('sync-text');
+      const warning = document.getElementById('permission-warning');
 
-      // Escuchar Productos
-      const prodRef = collection(db, 'artifacts', appId, 'public', 'data', 'productos');
-      onSnapshot(prodRef, (snapshot) => {
+      // Escuchar Productos (Path Obligatorio REGLA 1)
+      const prodPath = collection(db, 'artifacts', appId, 'public', 'data', 'productos');
+      onSnapshot(prodPath, (snapshot) => {
         state.productos = snapshot.docs.map(doc => ({ sku: doc.id, ...doc.data() }));
-        updateAll();
-        syncDot.className = "w-2 h-2 bg-green-500 rounded-full";
+        renderAll();
+        syncDot.className = "w-2 h-2 bg-emerald-500 rounded-full animate-pulse";
         syncText.innerText = "Sincronizado";
+        warning.classList.add('hidden');
       }, (err) => {
-        console.error("Error en sync de productos:", err);
+        console.error("FIREBASE ERROR:", err);
         syncDot.className = "w-2 h-2 bg-red-500 rounded-full";
-        syncText.innerText = "Error de Permisos";
+        syncText.innerText = "Error Permisos";
+        if (err.code === 'permission-denied') warning.classList.remove('hidden');
       });
 
       // Escuchar Movimientos
-      const movRef = collection(db, 'artifacts', appId, 'public', 'data', 'movimientos');
-      onSnapshot(movRef, (snapshot) => {
-        // Regla 2: Ordenar en memoria JS para evitar necesidad de índices complejos
-        state.movimientos = snapshot.docs.map(doc => doc.data()).sort((a,b) => b.fecha - a.fecha);
+      const movPath = collection(db, 'artifacts', appId, 'public', 'data', 'movimientos');
+      onSnapshot(movPath, (snapshot) => {
+        state.movimientos = snapshot.docs.map(doc => doc.data());
+        // Ordenamos en JS (REGLA 2)
+        state.movimientos.sort((a,b) => b.fecha - a.fecha);
         updateDashboard();
       }, (err) => {
-        console.error("Error en sync de movimientos:", err);
+          console.warn("Error cargando movimientos:", err);
       });
     }
 
-    // --- Operaciones de Base de Datos ---
-    async function saveProduct(sku, nombre) {
+    // --- ACCIONES DE DATOS ---
+    async function handleAddProduct(sku, nombre) {
       if (!user) return;
+      const cleanSku = sku.toUpperCase().trim();
       try {
-        const ref = doc(db, 'artifacts', appId, 'public', 'data', 'productos', sku);
-        await setDoc(ref, { nombre, stock: 0 });
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'productos', cleanSku), {
+          nombre,
+          stock: 0,
+          creado: Date.now()
+        });
+        showToast("Producto creado", "success");
       } catch (e) {
-        showToast("Error al guardar producto", "error");
+        showToast("Error de permisos", "error");
       }
     }
 
-    async function registerMovement(sku, tipo, cantidad) {
+    async function handleAddMovement(sku, tipo, cantidad) {
       if (!user) return;
       try {
         const prodRef = doc(db, 'artifacts', appId, 'public', 'data', 'productos', sku);
-        const prodSnap = await getDoc(prodRef);
+        const snap = await getDoc(prodRef);
         
-        if (!prodSnap.exists()) {
-          showToast("Producto no encontrado", "error");
-          return;
-        }
-
-        const currentStock = prodSnap.data().stock || 0;
+        if (!snap.exists()) return showToast("El producto no existe", "error");
+        
+        const currentStock = snap.data().stock || 0;
         const newStock = tipo === 'ENTRADA' ? currentStock + cantidad : currentStock - cantidad;
+        
+        if (newStock < 0) return showToast("Stock insuficiente", "error");
 
-        if (newStock < 0) {
-          throw new Error("Stock insuficiente en la sede");
-        }
-
-        // Actualizar stock del producto
         await updateDoc(prodRef, { stock: newStock });
         
-        // Registrar el log del movimiento
         const movRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'movimientos'));
         await setDoc(movRef, {
+          sku, tipo, cantidad,
           fecha: Date.now(),
-          sku: sku,
-          tipo: tipo,
-          cantidad: cantidad
+          usuario: user.uid
         });
-      } catch (err) {
-        throw err;
+        
+        showToast(`Registrada ${tipo}`, "success");
+      } catch (e) {
+        showToast("Error en la operación", "error");
       }
     }
 
-    // --- Handlers de Interfaz ---
-    window.processBulkLoad = async () => {
-      const input = document.getElementById('bulk-input').value;
-      const lines = input.split('\n').map(l => l.trim()).filter(l => l !== '');
-      if (lines.length === 0) return showToast('Pega una lista de materiales', 'error');
-
-      showToast(`Procesando ${lines.length} materiales...`, 'info');
-      for (const nombre of lines) {
-        const sku = "ART-" + Math.random().toString(36).substr(2, 5).toUpperCase();
-        await saveProduct(sku, nombre);
-      }
-      document.getElementById('bulk-input').value = '';
-      showToast('Carga masiva completada', 'success');
-      switchTab('inventario');
-    };
-
-    document.getElementById('form-producto').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fd = new FormData(e.target);
-      const sku = fd.get('sku') || "ART-" + Math.random().toString(36).substr(2, 5).toUpperCase();
-      const nombre = fd.get('nombre');
-      await saveProduct(sku, nombre);
-      showToast('Material registrado exitosamente', 'success');
-      e.target.reset();
-    });
-
-    document.getElementById('form-movimiento').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fd = new FormData(e.target);
-      const btn = e.target.querySelector('button');
-      btn.disabled = true;
-      btn.innerText = "Procesando...";
-
-      try {
-        await registerMovement(fd.get('producto_sku'), fd.get('tipo'), parseInt(fd.get('cantidad')));
-        showToast('Operación registrada', 'success');
-        e.target.reset();
-        document.getElementById('mov-search-input').value = '';
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "Confirmar Operación";
-      }
-    });
-
-    window.deleteProduct = async (sku) => {
-        if(confirm(`¿Estás seguro de eliminar el material ${sku}?`)) {
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'productos', sku));
-            showToast('Material eliminado', 'success');
-        }
-    };
-
-    // --- Renderizado de UI ---
-    function updateAll() {
+    // --- INTERFAZ ---
+    function renderAll() {
       updateDashboard();
       updateInventoryTable();
       initIcons();
@@ -381,94 +372,98 @@
       
       const tbody = document.getElementById('recent-moves-body');
       if (state.movimientos.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-slate-400">No hay movimientos registrados</td></tr>';
-          return;
+        tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-10 text-center text-slate-300 italic text-xs">No hay movimientos aún</td></tr>';
+        return;
       }
 
-      tbody.innerHTML = state.movimientos.slice(0, 8).map(m => {
-        const prod = state.productos.find(p => p.sku === m.sku);
+      tbody.innerHTML = state.movimientos.slice(0, 5).map(m => {
+        const p = state.productos.find(prod => prod.sku === m.sku);
         return `
-          <tr class="text-xs">
-            <td class="px-6 py-3">
-               <div class="font-medium text-slate-800">${prod ? prod.nombre : 'Eliminado'}</div>
-               <div class="text-[10px] text-slate-400 font-mono">${m.sku}</div>
+          <tr class="text-xs hover:bg-slate-50">
+            <td class="px-6 py-4">
+               <div class="font-bold text-slate-800">${p ? p.nombre : 'Producto Borrado'}</div>
+               <div class="text-[9px] text-slate-400 uppercase font-mono tracking-tighter">${m.sku}</div>
             </td>
-            <td class="px-6 py-3"><span class="px-2 py-0.5 rounded-full font-bold text-[10px] ${m.tipo === 'ENTRADA' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${m.tipo}</span></td>
-            <td class="px-6 py-3 text-right font-bold text-slate-700">${m.cantidad}</td>
+            <td class="px-6 py-4"><span class="px-2 py-0.5 rounded-md font-bold text-[8px] tracking-widest ${m.tipo === 'ENTRADA' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${m.tipo}</span></td>
+            <td class="px-6 py-4 text-right font-black text-slate-700">${m.cantidad}</td>
           </tr>`;
       }).join('');
     }
 
-    function updateInventoryTable(search = '') {
+    function updateInventoryTable(filter = '') {
       const tbody = document.getElementById('inventory-table-body');
-      const filtered = state.productos.filter(p => p.nombre.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()));
+      const filtered = state.productos.filter(p => p.nombre.toLowerCase().includes(filter.toLowerCase()) || p.sku.toLowerCase().includes(filter.toLowerCase()));
       
       if (filtered.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-10 text-center text-slate-400">No se encontraron materiales</td></tr>';
-          return;
+        tbody.innerHTML = '<tr><td colspan="4" class="px-8 py-20 text-center text-slate-300 italic text-sm">Sin resultados</td></tr>';
+        return;
       }
 
       tbody.innerHTML = filtered.map(p => `
-        <tr class="hover:bg-slate-50 transition-colors">
-          <td class="px-6 py-4 font-mono text-xs text-slate-500">${p.sku}</td>
-          <td class="px-6 py-4 text-sm font-semibold text-slate-800">${p.nombre}</td>
-          <td class="px-6 py-4 text-center">
-            <span class="px-3 py-1 rounded-lg font-bold ${p.stock <= 2 ? 'bg-orange-100 text-orange-700' : 'bg-blue-50 text-blue-700'}">
-                ${p.stock || 0}
+        <tr class="hover:bg-slate-50/50">
+          <td class="px-8 py-5 font-mono text-[10px] text-slate-400 font-bold">${p.sku}</td>
+          <td class="px-8 py-5 text-sm font-bold text-slate-800">${p.nombre}</td>
+          <td class="px-8 py-5 text-center">
+            <span class="inline-block px-4 py-1.5 rounded-xl font-black text-xs ${p.stock <= 5 ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}">
+                ${p.stock}
             </span>
           </td>
-          <td class="px-6 py-4 text-right">
-            <button onclick="deleteProduct('${p.sku}')" class="text-slate-300 hover:text-red-600 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+          <td class="px-8 py-5 text-right">
+            <button onclick="deleteProduct('${p.sku}')" class="text-slate-300 hover:text-red-500 transition-colors p-2 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
           </td>
         </tr>`).join('');
       initIcons();
     }
 
-    // --- Utilidades ---
-    window.switchTab = (tabId) => {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
-      document.querySelectorAll('.nav-btn').forEach(btn => btn.dataset.tab === tabId ? btn.classList.add('bg-slate-800', 'text-white') : btn.classList.remove('bg-slate-800', 'text-white'));
-      
-      const titles = { dashboard: 'Resumen', productos: 'Nuevo Producto', 'carga-masiva': 'Carga Masiva', movimientos: 'Movimientos', inventario: 'Inventario Completo' };
-      document.getElementById('pageTitle').innerText = titles[tabId];
+    // --- HANDLERS ---
+    document.getElementById('form-producto').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const sku = fd.get('sku') || 'ART-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+      await handleAddProduct(sku, fd.get('nombre'));
+      e.target.reset();
+    });
+
+    document.getElementById('form-movimiento').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      await handleAddMovement(fd.get('producto_sku'), fd.get('tipo'), parseInt(fd.get('cantidad')));
+      e.target.reset();
+      document.getElementById('mov-search-input').value = '';
+    });
+
+    window.deleteProduct = async (sku) => {
+      if (confirm(`¿Eliminar producto ${sku}?`)) {
+        try {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'productos', sku));
+          showToast("Eliminado", "success");
+        } catch (e) { showToast("Error de permisos", "error"); }
+      }
+    };
+
+    window.switchTab = (id) => {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.toggle('active', el.id === id));
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+          const isActive = btn.dataset.tab === id;
+          btn.classList.toggle('bg-slate-800', isActive);
+          btn.classList.toggle('text-white', isActive);
+      });
+      document.getElementById('pageTitle').innerText = id.charAt(0).toUpperCase() + id.slice(1);
       initIcons();
     };
 
-    function initIcons() { if (window.lucide) window.lucide.createIcons(); }
-    
-    function showToast(msg, type) {
-      const t = document.getElementById('toast');
-      const icon = document.getElementById('toast-icon');
-      document.getElementById('toast-msg').innerText = msg;
-      
-      icon.innerHTML = type === 'success' 
-        ? '<i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>' 
-        : '<i data-lucide="alert-circle" class="w-5 h-5 text-red-400"></i>';
-
-      t.classList.remove('translate-y-32', 'opacity-0');
-      setTimeout(() => t.classList.add('translate-y-32', 'opacity-0'), 3000);
-      initIcons();
-    }
-
-    // Búsqueda Dinámica
+    // Buscador interactivo de movimientos
     document.getElementById('mov-search-input').addEventListener('input', (e) => {
         const val = e.target.value.toLowerCase();
         const results = document.getElementById('mov-search-results');
         if(val.length < 1) return results.classList.add('hidden');
-        
         const matches = state.productos.filter(p => p.nombre.toLowerCase().includes(val) || p.sku.toLowerCase().includes(val));
-        
-        if (matches.length === 0) {
-            results.innerHTML = '<div class="px-4 py-2 text-xs text-slate-400">No hay coincidencias</div>';
-        } else {
-            results.innerHTML = matches.map(p => `
-                <div onclick="window.selectForMove('${p.sku}', '${p.nombre}')" class="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm border-b border-slate-100 last:border-0">
-                    <div class="font-bold text-slate-800">${p.nombre}</div>
-                    <div class="text-[10px] text-slate-400 font-mono">${p.sku} (Stock: ${p.stock || 0})</div>
-                </div>`).join('');
-        }
-        results.classList.remove('hidden');
+        results.innerHTML = matches.map(p => `
+            <div onclick="window.selectForMove('${p.sku}', '${p.nombre}')" class="px-5 py-3 hover:bg-blue-50 cursor-pointer border-b border-slate-50 transition-colors">
+                <div class="text-xs font-bold text-slate-800">${p.nombre}</div>
+                <div class="text-[9px] text-slate-400 font-mono uppercase">${p.sku} | Stock: ${p.stock}</div>
+            </div>`).join('');
+        results.classList.toggle('hidden', matches.length === 0);
     });
 
     window.selectForMove = (sku, nombre) => {
@@ -478,6 +473,19 @@
     };
 
     document.getElementById('search-inventory').addEventListener('input', (e) => updateInventoryTable(e.target.value));
+
+    function showToast(msg, type) {
+      const t = document.getElementById('toast');
+      const icon = document.getElementById('toast-icon');
+      document.getElementById('toast-msg').innerText = msg.toUpperCase();
+      icon.innerHTML = `<i data-lucide="${type==='success'?'check-circle':'alert-circle'}" class="w-4 h-4 ${type==='success'?'text-emerald-400':'text-red-400'}"></i>`;
+      t.classList.remove('translate-y-32', 'opacity-0');
+      setTimeout(() => t.classList.add('translate-y-32', 'opacity-0'), 3000);
+      initIcons();
+    }
+
+    function initIcons() { if (window.lucide) window.lucide.createIcons(); }
+    initIcons();
   </script>
 </body>
 </html>
